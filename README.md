@@ -4,3 +4,10 @@ Have you ever wanted to make your own Guitar Hero level? Well, this lets you do 
 
 Here are some screenshots;
 
+Gameplay:
+![Step 1](./Screenshot%202026-09-19%20102222.png)
+![Step 2](./Screenshot%202026-09-19%20102300.png)
+Star Power:
+![Step 3](./Screenshot%202026-09-19%20102234.png)
+
+
