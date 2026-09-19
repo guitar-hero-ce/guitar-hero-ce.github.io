@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Guitar Hero Custom Edition</title>
+<link rel="icon" type="image/png" href="logo.png">
+
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background: #06040a;
+      color: #f4f4f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    #danger-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      box-shadow: inset 0 0 100px rgba(239, 68, 68, 0.8);
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    #danger-overlay.active {
+      animation: dangerPulse 0.6s infinite alternate ease-in-out;
+    }
+
+    @keyframes dangerPulse {
+      from { opacity: 0.3; }
+      to { opacity: 0.9; }
+    }
+
+    .screen {
+      display: none;
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 680px;
+      padding: 2rem;
+      background: rgba(18, 12, 28, 0.88);
+      backdrop-filter: blur(16px);
+      border-radius: 24px;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      box-shadow: 0 0 60px rgba(168, 85, 247, 0.25), inset 0 0 20px rgba(250, 204, 21, 0.1);
+      text-align: center;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .screen.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo-container {
+      margin-bottom: 0.8rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .logo-img {
+      max-width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+      margin-bottom: 0.5rem;
+    }
+
+    h1.title-fallback {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      background: linear-gradient(135deg, #facc15, #ef4444, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+
+    p.subtitle {
+      color: #d4d4d8;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      background: rgba(10, 6, 18, 0.8);
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-field:focus { border-color: #facc15; }
+
+    .metadata-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(250, 204, 21, 0.4);
+      border-radius: 16px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      background: rgba(10, 6, 18, 0.7);
+      margin-bottom: 0.8rem;
+    }
+
+    .dropzone:hover {
+      border-color: #facc15;
+      background: rgba(26, 16, 42, 0.9);
+    }
+
+    .dropzone svg {
+      width: 32px; height: 32px;
+      fill: #facc15; margin-bottom: 0.2rem;
+    }
+
+    .file-name {
+      font-weight: 700; color: #22c55e;
+      margin-top: 0.4rem; word-break: break-all;
+    }
+
+    .cover-upload-zone {
+      width: 80px; height: 80px;
+      border: 2px dashed rgba(250, 204, 21, 0.4);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; background: rgba(10, 6, 18, 0.7);
+      position: relative; overflow: hidden;
+      margin: 0 auto 0.8rem auto;
+    }
+
+    .cover-upload-zone img {
+      width: 100%; height: 100%; object-fit: cover; position: absolute;
+    }
+
+    .cover-upload-icon {
+      font-size: 0.75rem; color: #a1a1aa; text-align: center; font-weight: 700;
+    }
+
+    .section-title {
+      font-size: 0.85rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #facc15;
+      margin-bottom: 0.5rem; font-weight: 900; text-align: left;
+    }
+
+    .difficulty-options {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem; margin-bottom: 1.2rem;
+    }
+
+    .diff-btn {
+      padding: 0.6rem 0.2rem;
+      background: rgba(10, 6, 18, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px; color: #a1a1aa;
+      cursor: pointer; display: flex;
+      flex-direction: column; align-items: center;
+    }
+
+    .diff-btn span.label { font-size: 0.85rem; font-weight: 900; color: #fff; }
+    .diff-btn span.sub { font-size: 0.65rem; color: #94a3b8; }
+
+    .diff-btn.selected {
+      background: linear-gradient(135deg, #facc15, #eab308);
+      border-color: #facc15;
+    }
+    .diff-btn.selected span.label, .diff-btn.selected span.sub { color: #000; }
+
+    .btn-primary {
+      width: 100%; padding: 1rem; border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #facc15, #ef4444);
+      color: #000; font-size: 1.1rem; font-weight: 900;
+      letter-spacing: 0.08em; cursor: pointer;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.4);
+    }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+
+    .btn-secondary {
+      padding: 0.6rem 1rem; border: 1px solid #facc15;
+      border-radius: 8px; background: transparent;
+      color: #facc15; font-weight: 700; cursor: pointer;
+    }
+    .btn-secondary:hover { background: rgba(250, 204, 21, 0.15); }
+
+    .library-section {
+      background: rgba(10, 6, 18, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px; padding: 1rem;
+      margin-bottom: 1.2rem; text-align: left;
+    }
+
+    .library-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 0.6rem;
+    }
+
+    .db-status-container { margin-bottom: 0.6rem; }
+    .db-status-label {
+      font-size: 0.7rem; color: #a1a1aa;
+      display: flex; justify-content: space-between;
+      margin-bottom: 3px; font-weight: 700;
+    }
+
+    .db-progress-wrapper {
+      width: 100%; height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px; overflow: hidden;
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+
+    .db-progress-wrapper.visible { opacity: 1; }
+
+    .db-progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #a855f7, #facc15, #22c55e);
+      transition: width 0.2s ease;
+    }
+
+    .library-list {
+      display: flex; flex-direction: column;
+      gap: 0.5rem; max-height: 160px; overflow-y: auto;
+    }
+
+    .library-item {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      background: rgba(24, 18, 38, 0.8);
+      padding: 0.5rem 0.8rem; border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .library-item:hover { border-color: #facc15; transform: translateX(3px); }
+    .library-item-info { display: flex; align-items: center; gap: 10px; }
+    .library-item-thumb { width: 38px; height: 38px; border-radius: 6px; object-fit: cover; background: #18181b; }
+    .library-item-title { font-size: 0.85rem; font-weight: 700; color: #f4f4f5; }
+    .library-item-artist { font-size: 0.72rem; color: #a1a1aa; }
+    .library-actions { display: flex; gap: 6px; }
+
+    .btn-sm {
+      padding: 0.35rem 0.65rem; font-size: 0.75rem;
+      border-radius: 6px; border: none; font-weight: 800; cursor: pointer;
+    }
+    .btn-play { background: #22c55e; color: #000; }
+    .btn-del { background: #ef4444; color: #fff; }
+
+    #game-container {
+      display: none; position: relative;
+      width: 100vw; height: 100vh;
+      background: transparent; overflow: hidden; z-index: 10;
+    }
+    #game-container.active { display: block; }
+    canvas { width: 100%; height: 100%; display: block; }
+
+    .hud {
+      position: absolute; top: 20px; left: 20px; right: 20px;
+      display: flex; justify-content: space-between;
+      align-items: center; pointer-events: none; z-index: 20;
+    }
+
+    .hud-card {
+      background: rgba(18, 12, 28, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      padding: 0.6rem 1.1rem; border-radius: 14px;
+      min-width: 120px; pointer-events: auto;
+    }
+
+    .hud-title { font-size: 0.65rem; color: #a1a1aa; font-weight: 900; text-transform: uppercase; }
+    .hud-value { font-size: 1.6rem; font-weight: 900; color: #fff; }
+    .multiplier { color: #facc15; }
+
+    .rock-meter-container {
+      display: flex; flex-direction: column; align-items: center; min-width: 220px;
+    }
+
+    .rock-meter-bar-wrapper {
+      position: relative; width: 100%; height: 16px;
+      background: #18181b; border-radius: 10px; overflow: hidden;
+      margin-top: 4px; border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .rock-meter-zones {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, #ef4444 0%, #ef4444 33%, #eab308 33%, #eab308 66%, #22c55e 66%, #22c55e 100%);
+      opacity: 0.25;
+    }
+
+    .rock-meter-fill {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 50%;
+      background: linear-gradient(90deg, #ef4444, #eab308 50%, #22c55e 100%);
+      transition: width 0.1s ease-out;
+    }
+
+    .rock-meter-needle {
+      position: absolute; top: -2px; bottom: -2px; left: 50%;
+      width: 4px; background: #fff; border-radius: 2px;
+      transform: translateX(-50%); transition: left 0.1s ease-out; z-index: 2;
+    }
+
+    .hud-album-art { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 2px solid #facc15; }
+
+    .pause-btn {
+      background: rgba(18, 12, 28, 0.85); border: 1px solid #facc15;
+      color: #facc15; width: 44px; height: 44px; border-radius: 12px;
+      font-size: 1.2rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; pointer-events: auto;
+    }
+
+    /* TOUCH CONTROLS PANEL */
+    #touch-controls-bar {
+      position: absolute;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      z-index: 25;
+      touch-action: none;
+    }
+
+    .touch-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(18, 12, 28, 0.85);
+      border: 4px solid #facc15;
+      color: #fff;
+      font-weight: 900;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform 0.05s ease, background 0.05s ease;
+    }
+
+    .touch-btn.active {
+      transform: scale(0.9);
+      background: #facc15;
+      color: #000;
+      box-shadow: 0 0 25px #facc15;
+    }
+
+    #pause-screen {
+      display: none; position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(6, 4, 10, 0.85); backdrop-filter: blur(12px);
+      z-index: 30; flex-direction: column; align-items: center;
+      justify-content: center; gap: 1.2rem;
+    }
+    #pause-screen.active { display: flex; }
+
+    .overdrive-box {
+      position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+      width: 300px; background: rgba(18, 12, 28, 0.9); border: 1px solid rgba(250, 204, 21, 0.3);
+      padding: 8px 14px; border-radius: 20px; pointer-events: auto; text-align: center; z-index: 20; cursor: pointer;
+    }
+    .overdrive-bar-bg { width: 100%; height: 10px; background: #27272a; border-radius: 5px; overflow: hidden; margin-top: 4px; }
+    .overdrive-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #06b6d4, #3b82f6); transition: width 0.1s linear; }
+
+    .judgment-container { position: absolute; top: 52%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; text-align: center; z-index: 20; }
+    .judgment-text { font-size: 3.2rem; font-weight: 900; font-style: italic; opacity: 0; transition: transform 0.08s ease-out, opacity 0.25s ease-out; }
+    .judgment-text.pop { opacity: 1; transform: scale(1.15) translateY(-10px); }
+
+    .spinner { border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #facc15; border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .results-album-art { width: 110px; height: 110px; border-radius: 14px; object-fit: cover; border: 2px solid #facc15; margin: 0 auto 1rem auto; display: block; }
+    .stat-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+    .stat-label { color: #a1a1aa; font-weight: 700; }
+    .stat-val { font-weight: 900; color: #f4f4f5; }
+  </style>
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+  <div id="danger-overlay"></div>
+
+  <!-- Setup Screen -->
+  <div id="setup-screen" class="screen active">
+    <div class="logo-container">
+      <img src="logo.png" alt="Guitar Hero Logo" class="logo-img" onerror="this.style.display='none'; document.getElementById('fallback-title').style.display='block';">
+      <h1 id="fallback-title" class="title-fallback" style="display: none;">GUITAR HERO<br><span style="font-size: 1.4rem; color:#facc15;">CUSTOM EDITION</span></h1>
+    </div>
+
+    <p class="subtitle">Upload audio or load from your saved Library</p>
+
+    <div class="dropzone" id="dropzone">
+      <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+      <div><strong>Select Audio File (MP3, WAV, OGG)</strong></div>
+      <div id="file-name" class="file-name"></div>
+      <input type="file" id="audio-input" accept="audio/*" style="display: none;">
+    </div>
+
+    <div class="metadata-group">
+      <input type="text" id="song-title-input" class="input-field" placeholder="Song Title">
+      <input type="text" id="song-artist-input" class="input-field" placeholder="Artist Name">
+    </div>
+
+    <div class="cover-upload-zone" id="cover-dropzone" title="Upload Cover Art">
+      <div class="cover-upload-icon" id="cover-prompt">🖼️<br>Add Cover</div>
+      <img id="cover-preview" style="display: none;" alt="Cover">
+      <input type="file" id="cover-input" accept="image/*" style="display: none;">
+    </div>
+
+    <div class="library-section">
+      <div class="library-header">
+        <span class="section-title" style="margin:0;">Library</span>
+        <button id="save-to-library-btn" class="btn-secondary" disabled>+ Save Song</button>
+      </div>
+
+      <div class="db-status-container">
+        <div class="db-status-label">
+          <span id="db-status-text">Initializing Database...</span>
+          <span id="db-status-percent">0%</span>
+        </div>
+        <div id="db-progress-wrapper" class="db-progress-wrapper visible">
+          <div id="db-progress-fill" class="db-progress-fill"></div>
+        </div>
+      </div>
+
+      <input type="text" id="library-search-input" class="input-field" placeholder="🔍 Search library songs or artists..." style="margin-bottom: 0.6rem;">
+
+      <div id="library-list" class="library-list">
+        <div style="color: #a1a1aa; font-size: 0.8rem;">No saved songs in library yet.</div>
+      </div>
+    </div>
+
+    <div class="section-title">Difficulty</div>
+    <div class="difficulty-options">
+      <button class="diff-btn" data-diff="easy"><span class="label">EASY</span><span class="sub">4 Lanes</span></button>
+      <button class="diff-btn selected" data-diff="medium"><span class="label">MEDIUM</span><span class="sub">4 Lanes</span></button>
+      <button class="diff-btn" data-diff="hard"><span class="label">HARD</span><span class="sub">5 Lanes</span></button>
+      <button class="diff-btn" data-diff="expert"><span class="label">EXPERT</span><span class="sub">5 Lanes</span></button>
+    </div>
+
+    <button id="start-btn" class="btn-primary" disabled>ROCK OUT</button>
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="screen">
+    <div class="spinner"></div>
+    <h2>Analyzing Audio Track...</h2>
+    <p class="subtitle">Generating precision note chart...</p>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+
+    <div class="hud">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <img id="hud-album-cover" class="hud-album-art" style="display: none;" alt="Cover">
+        <div class="hud-card">
+          <div class="hud-title">Score</div>
+          <div class="hud-value" id="score-display">0</div>
+        </div>
+      </div>
+
+      <div class="hud-card rock-meter-container">
+        <div class="hud-title" id="rock-status-title">ROCK METER</div>
+        <div class="rock-meter-bar-wrapper">
+          <div class="rock-meter-zones"></div>
+          <div class="rock-meter-fill" id="rock-meter-fill"></div>
+          <div class="rock-meter-needle" id="rock-meter-needle"></div>
+        </div>
+        <div id="stars-display" style="font-size: 1.2rem; margin-top:2px;">☆☆☆☆☆</div>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="hud-card" style="text-align: right;">
+          <div class="hud-title">Multiplier</div>
+          <div class="hud-value multiplier" id="multiplier-display">1x</div>
+        </div>
+        <button id="pause-hud-btn" class="pause-btn" title="Pause Game (ESC / P)">⏸️</button>
+      </div>
+    </div>
+
+    <div id="judgment-container" class="judgment-container">
+      <div id="judgment-text" class="judgment-text">PERFECT!</div>
+    </div>
+
+    <div id="overdrive-trigger-btn" class="overdrive-box">
+      <div id="overdrive-hint" style="font-size: 0.7rem; font-weight: 900; color: #06b6d4;">STAR POWER READY [TAP / SPACE]</div>
+      <div class="overdrive-bar-bg"><div id="overdrive-fill" class="overdrive-bar-fill"></div></div>
+    </div>
+
+    <!-- On-Screen Touch Buttons Dynamic Container -->
+    <div id="touch-controls-bar"></div>
+  </div>
+
+  <!-- Pause Overlay Screen -->
+  <div id="pause-screen">
+    <h2 style="font-size: 2.5rem; color: #facc15; font-weight: 900;">PAUSED</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px; width: 220px;">
+      <button id="resume-btn" class="btn-primary">RESUME</button>
+      <button id="quit-btn" class="btn-secondary" style="border-color: #ef4444; color: #ef4444;">QUIT TO MENU</button>
+    </div>
+  </div>
+
+  <!-- Results Screen -->
+  <div id="results-screen" class="screen">
+    <img id="results-album-cover" class="results-album-art" style="display: none;" alt="Cover">
+    <h2 id="results-header" style="font-size: 2rem; font-weight: 900; color: #facc15;">STAGE COMPLETE!</h2>
+    <div id="results-stars" style="font-size: 2.5rem; color: #facc15;">☆☆☆☆☆</div>
+
+    <div style="margin: 1.5rem 0;">
+      <div class="stat-row"><span class="stat-label">Final Score</span><span class="stat-val" id="final-score">0</span></div>
+      <div class="stat-row"><span class="stat-label">Max Streak</span><span class="stat-val" id="max-combo">0</span></div>
+      <div class="stat-row"><span class="stat-label">Perfect Hits</span><span class="stat-val" id="count-perfect" style="color:#facc15;">0</span></div>
+      <div class="stat-row"><span class="stat-label">Good Hits</span><span class="stat-val" id="count-good" style="color:#22c55e;">0</span></div>
+      <div class="stat-row"><span class="stat-label">Misses</span><span class="stat-val" id="count-miss" style="color:#ef4444;">0</span></div>
+    </div>
+
+    <button id="retry-btn" class="btn-primary">PLAY ANOTHER TRACK</button>
+  </div>
+
+  <script>
+    // Canvas & Animated Background Setup
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let bgParticles = [];
+    let gridOffset = 0;
+
+    function initBgCanvas() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+      bgParticles = [];
+      for (let i = 0; i < 65; i++) {
+        bgParticles.push({
+          x: Math.random() * bgCanvas.width,
+          y: Math.random() * bgCanvas.height,
+          radius: Math.random() * 3 + 1,
+          speedY: Math.random() * 1.2 + 0.3,
+          color: ['#facc15', '#a855f7', '#ef4444', '#3b82f6', '#22c55e'][Math.floor(Math.random() * 5)],
+          alpha: Math.random() * 0.7 + 0.3
+        });
+      }
+    }
+    window.addEventListener('resize', initBgCanvas);
+    initBgCanvas();
+
+    function renderBgAnimation() {
+      const w = bgCanvas.width, h = bgCanvas.height;
+      bgCtx.fillStyle = '#06040a';
+      bgCtx.fillRect(0, 0, w, h);
+
+      gridOffset = (gridOffset + 0.8) % 30;
+      bgCtx.strokeStyle = 'rgba(168, 85, 247, 0.15)';
+      bgCtx.lineWidth = 1;
+      const horizon = h * 0.4;
+      for (let x = -w; x < w * 2; x += 40) {
+        bgCtx.beginPath();
+        bgCtx.moveTo(x, h);
+        bgCtx.lineTo(w / 2 + (x - w / 2) * 0.1, horizon);
+        bgCtx.stroke();
+      }
+      for (let y = horizon; y < h; y += 15 + (y - horizon) * 0.1) {
+        const renderY = y + (gridOffset * (y - horizon) / h);
+        if (renderY < h) {
+          bgCtx.beginPath();
+          bgCtx.moveTo(0, renderY);
+          bgCtx.lineTo(w, renderY);
+          bgCtx.stroke();
+        }
+      }
+
+      const time = Date.now() * 0.001;
+      const gradX = w / 2 + Math.sin(time) * 150;
+      const gradY = h / 3 + Math.cos(time * 0.8) * 80;
+      const radGrad = bgCtx.createRadialGradient(gradX, gradY, 10, gradX, gradY, w * 0.6);
+      radGrad.addColorStop(0, 'rgba(250, 204, 21, 0.15)');
+      radGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.1)');
+      radGrad.addColorStop(1, 'rgba(6, 4, 10, 0.9)');
+      bgCtx.fillStyle = radGrad;
+      bgCtx.fillRect(0, 0, w, h);
+
+      bgParticles.forEach(p => {
+        p.y -= p.speedY;
+        if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+        bgCtx.save();
+        bgCtx.globalAlpha = p.alpha;
+        bgCtx.shadowBlur = 10;
+        bgCtx.shadowColor = p.color;
+        bgCtx.fillStyle = p.color;
+        bgCtx.beginPath();
+        bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        bgCtx.fill();
+        bgCtx.restore();
+      });
+
+      requestAnimationFrame(renderBgAnimation);
+    }
+    renderBgAnimation();
+
+    // Lane Configs
+    const FOUR_LANES = [
+      { key: 'd', code: 'KeyD', name: 'Green',  color: '#22c55e' },
+      { key: 'f', code: 'KeyF', name: 'Red',    color: '#ef4444' },
+      { key: 'j', code: 'KeyJ', name: 'Yellow', color: '#eab308' },
+      { key: 'k', code: 'KeyK', name: 'Blue',   color: '#3b82f6' }
+    ];
+
+    const FIVE_LANES = [
+      { key: 's', code: 'KeyS', name: 'Orange', color: '#f97316' },
+      { key: 'd', code: 'KeyD', name: 'Green',  color: '#22c55e' },
+      { key: 'f', code: 'KeyF', name: 'Red',    color: '#ef4444' },
+      { key: 'j', code: 'KeyJ', name: 'Yellow', color: '#eab308' },
+      { key: 'k', code: 'KeyK', name: 'Blue',   color: '#3b82f6' }
+    ];
+
+    const DIFF_CONFIGS = {
+      easy: { lanes: FOUR_LANES, travelTime: 1.55, hitWindowPerfect: 0.030, hitWindowGood: 0.080, sensitivity: 2.2, minLaneGap: 0.30, minGlobalGap: 0.20 },
+      medium: { lanes: FOUR_LANES, travelTime: 1.28, hitWindowPerfect: 0.030, hitWindowGood: 0.080, sensitivity: 1.6, minLaneGap: 0.21, minGlobalGap: 0.13 },
+      hard: { lanes: FIVE_LANES, travelTime: 1.20, hitWindowPerfect: 0.030, hitWindowGood: 0.080, sensitivity: 1.5, minLaneGap: 0.20, minGlobalGap: 0.12 },
+      expert: { lanes: FIVE_LANES, travelTime: 0.95, hitWindowPerfect: 0.030, hitWindowGood: 0.080, sensitivity: 1.2, minLaneGap: 0.15, minGlobalGap: 0.09 }
+    };
+
+    // State
+    let selectedFileBuffer = null;
+    let selectedFileName = '';
+    let albumCoverUrl = null;
+    let selectedDifficulty = 'medium';
+    let currentConfig = DIFF_CONFIGS.medium;
+    let activeLanes = FOUR_LANES;
+
+    let audioBuffer = null;
+    let audioCtx = null;
+    let audioSource = null;
+    let startTime = 0;
+    let isPaused = false;
+
+    let chartNotes = [];
+    let maxPossibleScore = 1;
+    let score = 0, combo = 0, maxCombo = 0, baseMultiplier = 1;
+    let overdriveActive = false, overdriveMeter = 0, rockMeter = 50;
+    let perfects = 0, goods = 0, misses = 0;
+    let isPlaying = false, isFailed = false;
+    let activeKeys = [];
+
+    let previewAudio = null;
+    let previewObjectUrl = null;
+
+    // DOM Elements
+    const setupScreen = document.getElementById('setup-screen');
+    const loadingScreen = document.getElementById('loading-screen');
+    const gameContainer = document.getElementById('game-container');
+    const pauseScreen = document.getElementById('pause-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const dangerOverlay = document.getElementById('danger-overlay');
+
+    const dropzone = document.getElementById('dropzone');
+    const audioInput = document.getElementById('audio-input');
+    const fileNameDisplay = document.getElementById('file-name');
+    const songTitleInput = document.getElementById('song-title-input');
+    const songArtistInput = document.getElementById('song-artist-input');
+
+    const coverDropzone = document.getElementById('cover-dropzone');
+    const coverInput = document.getElementById('cover-input');
+    const coverPreview = document.getElementById('cover-preview');
+    const coverPrompt = document.getElementById('cover-prompt');
+
+    const saveToLibraryBtn = document.getElementById('save-to-library-btn');
+    const libraryList = document.getElementById('library-list');
+    const librarySearchInput = document.getElementById('library-search-input');
+
+    const dbStatusText = document.getElementById('db-status-text');
+    const dbStatusPercent = document.getElementById('db-status-percent');
+    const dbProgressWrapper = document.getElementById('db-progress-wrapper');
+    const dbProgressFill = document.getElementById('db-progress-fill');
+
+    const startBtn = document.getElementById('start-btn');
+    const retryBtn = document.getElementById('retry-btn');
+    const pauseHudBtn = document.getElementById('pause-hud-btn');
+    const resumeBtn = document.getElementById('resume-btn');
+    const quitBtn = document.getElementById('quit-btn');
+    const overdriveTriggerBtn = document.getElementById('overdrive-trigger-btn');
+    const touchBar = document.getElementById('touch-controls-bar');
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const scoreDisplay = document.getElementById('score-display');
+    const starsDisplay = document.getElementById('stars-display');
+    const multiplierDisplay = document.getElementById('multiplier-display');
+    const overdriveFill = document.getElementById('overdrive-fill');
+    const rockMeterFill = document.getElementById('rock-meter-fill');
+    const rockMeterNeedle = document.getElementById('rock-meter-needle');
+    const rockStatusTitle = document.getElementById('rock-status-title');
+
+    function setDbProgress(percentage, statusMessage, autoHide = true) {
+      dbProgressWrapper.classList.add('visible');
+      dbProgressFill.style.width = `${percentage}%`;
+      dbStatusPercent.textContent = `${Math.round(percentage)}%`;
+      if (statusMessage) dbStatusText.textContent = statusMessage;
+
+      if (percentage >= 100 && autoHide) {
+        setTimeout(() => dbProgressWrapper.classList.remove('visible'), 1200);
+      }
+    }
+
+    let db;
+    setDbProgress(20, 'Opening Database Connection...');
+
+    const dbReq = indexedDB.open('GuitarHeroLibraryDB', 2);
+
+    dbReq.onupgradeneeded = (e) => {
+      setDbProgress(60, 'Upgrading Local Database Schema...');
+      db = e.target.result;
+      if (!db.objectStoreNames.contains('songs')) {
+        db.createObjectStore('songs', { keyPath: 'id' });
+      }
+    };
+
+    dbReq.onsuccess = (e) => {
+      db = e.target.result;
+      setDbProgress(100, 'Database Loaded & Ready');
+      refreshLibraryUI();
+    };
+
+    dbReq.onerror = (e) => {
+      console.error("IndexedDB Error:", e);
+      setDbProgress(100, 'Database Error!');
+      dbStatusText.textContent = 'Database Connection Failed';
+    };
+
+    dropzone.addEventListener('click', () => audioInput.click());
+    dropzone.addEventListener('dragover', (e) => e.preventDefault());
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]);
+    });
+    audioInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFileSelect(e.target.files[0]);
+    });
+
+    async function handleFileSelect(file) {
+      if (!file.type.startsWith('audio/')) return alert('Select an audio file!');
+      selectedFileName = file.name;
+      selectedFileBuffer = await file.arrayBuffer();
+
+      const cleanTitle = file.name.replace(/\.[^/.]+$/, "");
+      songTitleInput.value = cleanTitle;
+      songArtistInput.value = "Unknown Artist";
+
+      fileNameDisplay.textContent = `🎵 ${file.name}`;
+      startBtn.disabled = false;
+      saveToLibraryBtn.disabled = false;
+    }
+
+    coverDropzone.addEventListener('click', () => coverInput.click());
+    coverInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleCoverSelect(e.target.files[0]);
+    });
+
+    function handleCoverSelect(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        albumCoverUrl = e.target.result;
+        coverPreview.src = albumCoverUrl;
+        coverPreview.style.display = 'block';
+        coverPrompt.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    saveToLibraryBtn.addEventListener('click', () => {
+      if (!selectedFileBuffer || !db) return;
+      setDbProgress(25, 'Preparing Track Data...', false);
+
+      setTimeout(() => {
+        try {
+          setDbProgress(55, 'Saving Audio Buffer to IndexedDB...', false);
+
+          const tx = db.transaction('songs', 'readwrite');
+          const store = tx.objectStore('songs');
+          const songData = {
+            id: Date.now().toString(),
+            title: songTitleInput.value.trim() || selectedFileName,
+            artist: songArtistInput.value.trim() || "Unknown Artist",
+            audioData: selectedFileBuffer,
+            coverUrl: albumCoverUrl,
+            date: new Date().toLocaleDateString()
+          };
+
+          const putReq = store.put(songData);
+
+          putReq.onsuccess = () => {
+            setDbProgress(100, 'Track Saved Successfully!');
+            refreshLibraryUI();
+          };
+
+          putReq.onerror = () => setDbProgress(100, 'Failed to Save Track');
+        } catch (err) {
+          setDbProgress(100, 'Transaction Error');
+        }
+      }, 150);
+    });
+
+    librarySearchInput.addEventListener('input', refreshLibraryUI);
+
+    function refreshLibraryUI() {
+      if (!db) return;
+      const searchTerm = librarySearchInput.value.toLowerCase().trim();
+      const tx = db.transaction('songs', 'readonly');
+      const req = tx.objectStore('songs').getAll();
+
+      req.onsuccess = () => {
+        let songs = req.result;
+        if (searchTerm) {
+          songs = songs.filter(s =>
+            (s.title && s.title.toLowerCase().includes(searchTerm)) ||
+            (s.artist && s.artist.toLowerCase().includes(searchTerm))
+          );
+        }
+
+        if (songs.length === 0) {
+          libraryList.innerHTML = `<div style="color: #a1a1aa; font-size: 0.8rem;">No songs found.</div>`;
+          return;
+        }
+
+        libraryList.innerHTML = '';
+        songs.forEach(song => {
+          const item = document.createElement('div');
+          item.className = 'library-item';
+          item.dataset.id = song.id;
+
+          item.innerHTML = `
+            <div class="library-item-info">
+              <img class="library-item-thumb" src="${song.coverUrl || 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'%23facc15\' viewBox=\'0 0 24 24\'><path d=\'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z\'/></svg>'}" alt="Cover">
+              <div>
+                <div class="library-item-title">${song.title}</div>
+                <div class="library-item-artist">${song.artist || 'Unknown Artist'} • ${song.date}</div>
+              </div>
+            </div>
+            <div class="library-actions">
+              <button class="btn-sm btn-play" onclick="loadFromLibrary('${song.id}')">PLAY</button>
+              <button class="btn-sm btn-del" onclick="deleteFromLibrary('${song.id}')">🗑️</button>
+            </div>
+          `;
+
+          item.addEventListener('mouseenter', () => playPreview(song));
+          item.addEventListener('mouseleave', stopPreview);
+
+          libraryList.appendChild(item);
+        });
+      };
+    }
+
+    function playPreview(song) {
+      stopPreview();
+      try {
+        const blob = new Blob([song.audioData], { type: 'audio/mp3' });
+        previewObjectUrl = URL.createObjectURL(blob);
+        previewAudio = new Audio(previewObjectUrl);
+        previewAudio.currentTime = 15;
+        previewAudio.volume = 0.5;
+        previewAudio.play().catch(() => {});
+      } catch (e) {}
+    }
+
+    function stopPreview() {
+      if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+      if (previewObjectUrl) { URL.revokeObjectURL(previewObjectUrl); previewObjectUrl = null; }
+    }
+
+    window.loadFromLibrary = (id) => {
+      stopPreview();
+      setDbProgress(30, 'Retrieving Track...', false);
+
+      const tx = db.transaction('songs', 'readonly');
+      const req = tx.objectStore('songs').get(id);
+
+      req.onsuccess = () => {
+        const song = req.result;
+        if (!song) return;
+        selectedFileBuffer = song.audioData;
+        selectedFileName = song.title;
+        albumCoverUrl = song.coverUrl;
+
+        songTitleInput.value = song.title;
+        songArtistInput.value = song.artist || "Unknown Artist";
+        fileNameDisplay.textContent = `🎵 ${song.title} (Library)`;
+
+        if (albumCoverUrl) {
+          coverPreview.src = albumCoverUrl;
+          coverPreview.style.display = 'block';
+          coverPrompt.style.display = 'none';
+        }
+        startBtn.disabled = false;
+        saveToLibraryBtn.disabled = false;
+        setDbProgress(100, 'Track Loaded');
+      };
+    };
+
+    window.deleteFromLibrary = (id) => {
+      stopPreview();
+      setDbProgress(40, 'Deleting Track...', false);
+      const tx = db.transaction('songs', 'readwrite');
+      tx.objectStore('songs').delete(id);
+      tx.oncomplete = () => {
+        setDbProgress(100, 'Track Deleted');
+        refreshLibraryUI();
+      };
+    };
+
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedDifficulty = btn.dataset.diff;
+      });
+    });
+
+    startBtn.addEventListener('click', async () => {
+      if (!selectedFileBuffer) return;
+      stopPreview();
+
+      currentConfig = DIFF_CONFIGS[selectedDifficulty];
+      activeLanes = currentConfig.lanes;
+      activeKeys = new Array(activeLanes.length).fill(false);
+
+      switchScreen(loadingScreen);
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioBuffer = await audioCtx.decodeAudioData(selectedFileBuffer.slice(0));
+      chartNotes = await analyzeAudioToNotes(audioBuffer, currentConfig);
+      maxPossibleScore = calculateMaxPossibleScore(chartNotes);
+
+      switchScreen(gameContainer);
+      resizeCanvas();
+      renderTouchControls();
+      startGameplay();
+    });
+
+    function switchScreen(screen) {
+      [setupScreen, loadingScreen, gameContainer, resultsScreen].forEach(s => s.classList.remove('active'));
+      screen.classList.add('active');
+    }
+
+    function calculateMaxPossibleScore(notes) {
+      return notes.reduce((acc, _, i) => acc + 1000 * (i >= 30 ? 4 : i >= 20 ? 3 : i >= 10 ? 2 : 1), 0) || 1;
+    }
+
+    async function analyzeAudioToNotes(buffer, config) {
+      const sampleRate = buffer.sampleRate;
+      const length = buffer.length;
+      const numLanes = config.lanes.length;
+
+      const bandConfigs = numLanes === 5 ? [
+        { type: 'lowpass', freq: 110 }, { type: 'bandpass', freq: 300, q: 1.0 },
+        { type: 'bandpass', freq: 1000, q: 1.0 }, { type: 'bandpass', freq: 2800, q: 1.0 },
+        { type: 'highpass', freq: 5500 }
+      ] : [
+        { type: 'lowpass', freq: 140 }, { type: 'bandpass', freq: 500, q: 1.0 },
+        { type: 'bandpass', freq: 2200, q: 1.0 }, { type: 'highpass', freq: 4800 }
+      ];
+
+      const rawNotes = [];
+      for (let laneIdx = 0; laneIdx < numLanes; laneIdx++) {
+        const offlineCtx = new OfflineAudioContext(1, length, sampleRate);
+        const src = offlineCtx.createBufferSource();
+        src.buffer = buffer;
+
+        const filter = offlineCtx.createBiquadFilter();
+        filter.type = bandConfigs[laneIdx].type;
+        filter.frequency.value = bandConfigs[laneIdx].freq;
+        if (bandConfigs[laneIdx].q) filter.Q.value = bandConfigs[laneIdx].q;
+
+        src.connect(filter); filter.connect(offlineCtx.destination);
+        src.start(0);
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        const data = renderedBuffer.getChannelData(0);
+
+        const frameSize = Math.floor(sampleRate * 0.015);
+        const numFrames = Math.floor(data.length / frameSize);
+        const energies = new Float32Array(numFrames);
+        let totalEnergy = 0;
+
+        for (let f = 0; f < numFrames; f++) {
+          let sum = 0, offset = f * frameSize;
+          for (let i = 0; i < frameSize; i++) sum += data[offset + i] * data[offset + i];
+          energies[f] = Math.sqrt(sum / frameSize);
+          totalEnergy += energies[f];
+        }
+
+        const avgEnergy = totalEnergy / numFrames;
+        let lastTime = -10;
+        const windowSize = 8;
+
+        for (let f = windowSize; f < numFrames - windowSize; f++) {
+          let localAvg = 0;
+          for (let w = -windowSize; w <= windowSize; w++) localAvg += energies[f + w];
+          localAvg /= (windowSize * 2 + 1);
+
+          const time = f * 0.015;
+          if (energies[f] > localAvg * config.sensitivity && energies[f] > avgEnergy * 0.85 && (time - lastTime >= config.minLaneGap)) {
+            rawNotes.push({ time, lane: laneIdx, hit: false, missed: false });
+            lastTime = time;
+          }
+        }
+      }
+
+      rawNotes.sort((a, b) => a.time - b.time);
+      const finalNotes = [];
+      let lastGlobal = -10;
+      for (let note of rawNotes) {
+        if (note.time - lastGlobal >= config.minGlobalGap) {
+          finalNotes.push(note);
+          lastGlobal = note.time;
+        }
+      }
+      return finalNotes;
+    }
+
+    // Touch Controls Generation & Press Handlers
+    function renderTouchControls() {
+      touchBar.innerHTML = '';
+      activeLanes.forEach((lane, idx) => {
+        const btn = document.createElement('div');
+        btn.className = 'touch-btn';
+        btn.style.borderColor = lane.color;
+        btn.textContent = lane.key.toUpperCase();
+
+        const press = (e) => {
+          e.preventDefault();
+          activeKeys[idx] = true;
+          btn.classList.add('active');
+          checkHit(idx);
+        };
+
+        const release = (e) => {
+          e.preventDefault();
+          activeKeys[idx] = false;
+          btn.classList.remove('active');
+        };
+
+        btn.addEventListener('pointerdown', press);
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointerleave', release);
+        btn.addEventListener('pointercancel', release);
+
+        touchBar.appendChild(btn);
+      });
+    }
+
+    // Star Power Touch Activation
+    overdriveTriggerBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (overdriveMeter >= 50 && !overdriveActive) {
+        overdriveActive = true;
+        updateHUD();
+      }
+    });
+
+    function startGameplay() {
+      score = 0; combo = 0; maxCombo = 0; baseMultiplier = 1;
+      overdriveMeter = 0; overdriveActive = false; rockMeter = 50;
+      perfects = 0; goods = 0; misses = 0;
+      isPlaying = true; isFailed = false; isPaused = false;
+
+      dangerOverlay.classList.remove('active');
+      pauseScreen.classList.remove('active');
+
+      const hudCover = document.getElementById('hud-album-cover');
+      if (albumCoverUrl) { hudCover.src = albumCoverUrl; hudCover.style.display = 'block'; }
+      else { hudCover.style.display = 'none'; }
+
+      updateHUD();
+      audioSource = audioCtx.createBufferSource();
+      audioSource.buffer = audioBuffer;
+      audioSource.connect(audioCtx.destination);
+      startTime = audioCtx.currentTime + 0.5;
+      audioSource.start(startTime);
+      requestAnimationFrame(gameLoop);
+    }
+
+    function togglePause() {
+      if (!isPlaying || isFailed) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        audioCtx.suspend();
+        pauseScreen.classList.add('active');
+      } else {
+        audioCtx.resume();
+        pauseScreen.classList.remove('active');
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    pauseHudBtn.addEventListener('click', togglePause);
+    resumeBtn.addEventListener('click', togglePause);
+    quitBtn.addEventListener('click', () => {
+      isPaused = false;
+      pauseScreen.classList.remove('active');
+      endGame(false, true);
+    });
+
+    function getCurrentTime() {
+      return audioCtx.currentTime - startTime;
+    }
+
+    function calculateStarRating() {
+      const ratio = Math.min(1, score / maxPossibleScore);
+      if (ratio >= 0.85) return 5;
+      if (ratio >= 0.68) return 4;
+      if (ratio >= 0.50) return 3;
+      if (ratio >= 0.32) return 2;
+      if (ratio >= 0.15) return 1;
+      return 0;
+    }
+
+    function updateHUD() {
+      scoreDisplay.textContent = score.toLocaleString();
+      const mult = baseMultiplier * (overdriveActive ? 2 : 1);
+      multiplierDisplay.textContent = `${mult}x`;
+
+      rockMeterFill.style.width = `${rockMeter}%`;
+      rockMeterNeedle.style.left = `${rockMeter}%`;
+
+      if (rockMeter < 33) {
+        rockStatusTitle.textContent = "DANGER!"; rockStatusTitle.style.color = "#ef4444";
+        dangerOverlay.classList.add('active');
+      } else {
+        rockStatusTitle.textContent = "ROCK METER"; rockStatusTitle.style.color = "#22c55e";
+        dangerOverlay.classList.remove('active');
+      }
+
+      overdriveFill.style.width = `${overdriveMeter}%`;
+
+      const stars = calculateStarRating();
+      starsDisplay.textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+    }
+
+    // Keyboard controls
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyP' || e.code === 'Escape') {
+        togglePause();
+        return;
+      }
+      if (!isPlaying || isPaused || e.repeat) return;
+      if (e.code === 'Space') {
+        if (overdriveMeter >= 50 && !overdriveActive) { overdriveActive = true; updateHUD(); }
+        return;
+      }
+      const idx = activeLanes.findIndex(l => l.code === e.code);
+      if (idx !== -1) {
+        activeKeys[idx] = true;
+        const btn = touchBar.children[idx];
+        if (btn) btn.classList.add('active');
+        checkHit(idx);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const idx = activeLanes.findIndex(l => l.code === e.code);
+      if (idx !== -1) {
+        activeKeys[idx] = false;
+        const btn = touchBar.children[idx];
+        if (btn) btn.classList.remove('active');
+      }
+    });
+
+    function checkHit(laneIdx) {
+      const curTime = getCurrentTime();
+      const note = chartNotes.find(n => !n.hit && !n.missed && n.lane === laneIdx && Math.abs(n.time - curTime) <= currentConfig.hitWindowGood);
+
+      if (note) {
+        note.hit = true;
+        const diff = Math.abs(note.time - curTime);
+        const mult = baseMultiplier * (overdriveActive ? 2 : 1);
+
+        if (diff <= currentConfig.hitWindowPerfect) {
+          score += 1000 * mult; perfects++;
+          showJudgment('PERFECT!', '#facc15');
+          rockMeter = Math.min(100, rockMeter + 7);
+        } else {
+          score += 500 * mult; goods++;
+          showJudgment('GOOD', '#22c55e');
+          rockMeter = Math.min(100, rockMeter + 4);
+        }
+
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        baseMultiplier = Math.min(4, 1 + Math.floor(combo / 10));
+        if (!overdriveActive) overdriveMeter = Math.min(100, overdriveMeter + 4);
+        updateHUD();
+      }
+    }
+
+    function showJudgment(text, color) {
+      const el = document.getElementById('judgment-text');
+      el.textContent = text; el.style.color = color;
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    }
+
+    function gameLoop() {
+      if (!isPlaying || isPaused) return;
+      const curTime = getCurrentTime();
+
+      if (curTime > audioBuffer.duration + 1) { endGame(false); return; }
+
+      if (overdriveActive) {
+        overdriveMeter -= 0.15;
+        if (overdriveMeter <= 0) { overdriveMeter = 0; overdriveActive = false; }
+        updateHUD();
+      }
+
+      chartNotes.forEach(n => {
+        if (!n.hit && !n.missed && curTime - n.time > currentConfig.hitWindowGood) {
+          n.missed = true; combo = 0; baseMultiplier = 1; misses++;
+          rockMeter -= 6;
+          if (rockMeter <= 0) { rockMeter = 0; endGame(true); return; }
+          updateHUD();
+          showJudgment('MISS', '#ef4444');
+        }
+      });
+
+      if (!isFailed) { drawHighway(curTime); requestAnimationFrame(gameLoop); }
+    }
+
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawHighway(currentTime) {
+      const w = canvas.width, h = canvas.height, numLanes = activeLanes.length;
+      
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = overdriveActive ? 'rgba(2, 11, 20, 0.4)' : 'rgba(3, 2, 8, 0.4)';
+      ctx.fillRect(0, 0, w, h);
+
+      const horizonY = h * 0.18, hitLineY = h * 0.76;
+      const topW = Math.min(numLanes === 5 ? 270 : 220, w * 0.35);
+      const botW = Math.min(numLanes === 5 ? 760 : 640, w * 0.90);
+      const cx = w / 2;
+
+      const grad = ctx.createLinearGradient(0, horizonY, 0, h);
+      grad.addColorStop(0, overdriveActive ? 'rgba(12, 34, 56, 0.8)' : 'rgba(12, 10, 26, 0.8)');
+      grad.addColorStop(1, overdriveActive ? 'rgba(8, 51, 68, 0.85)' : 'rgba(22, 17, 46, 0.85)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx - topW / 2, horizonY);
+      ctx.lineTo(cx + topW / 2, horizonY);
+      ctx.lineTo(cx + botW / 2, hitLineY + 60);
+      ctx.lineTo(cx - botW / 2, hitLineY + 60);
+      ctx.fill();
+
+      for (let i = 0; i <= numLanes; i++) {
+        const pTop = cx - topW / 2 + (topW / numLanes) * i;
+        const pBot = cx - botW / 2 + (botW / numLanes) * i;
+        ctx.strokeStyle = i === 0 || i === numLanes ? '#facc15' : 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pTop, horizonY); ctx.lineTo(pBot, hitLineY + 60); ctx.stroke();
+      }
+
+      for (let i = 0; i < numLanes; i++) {
+        const laneX = cx - botW / 2 + (botW / numLanes) * (i + 0.5);
+        const laneW = (botW / numLanes) * 0.72;
+        const color = activeLanes[i].color;
+
+        ctx.save(); ctx.translate(laneX, hitLineY);
+        ctx.fillStyle = activeKeys[i] ? color : 'rgba(0,0,0,0.8)';
+        ctx.strokeStyle = color; ctx.lineWidth = activeKeys[i] ? 5 : 3;
+        ctx.beginPath(); ctx.ellipse(0, 0, laneW / 2, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = activeKeys[i] ? '#000' : '#fff'; ctx.font = '900 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(activeLanes[i].key.toUpperCase(), 0, 0);
+        ctx.restore();
+      }
+
+      chartNotes.forEach(note => {
+        if (note.hit || note.missed) return;
+        const timeDiff = note.time - currentTime;
+        if (timeDiff > currentConfig.travelTime || timeDiff < -0.2) return;
+
+        const progress = 1 - (timeDiff / currentConfig.travelTime);
+        if (progress < 0 || progress > 1.05) return;
+        const pSq = progress * progress;
+
+        const curY = horizonY + (hitLineY - horizonY) * pSq;
+        const curTrackW = topW + (botW - topW) * pSq;
+        const noteX = cx - curTrackW / 2 + (curTrackW / numLanes) * (note.lane + 0.5);
+        const rx = ((curTrackW / numLanes) * 0.65) / 2;
+        const ry = Math.max(3, 12 * pSq);
+
+        ctx.save(); ctx.translate(noteX, curY);
+        ctx.fillStyle = overdriveActive ? '#06b6d4' : activeLanes[note.lane].color;
+        ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, 0, rx * 0.4, ry * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function endGame(failed = false, quit = false) {
+      isPlaying = false; isFailed = failed;
+      dangerOverlay.classList.remove('active');
+      if (audioSource) try { audioSource.stop(); } catch(e){}
+
+      if (quit) {
+        switchScreen(setupScreen);
+        return;
+      }
+
+      const resCover = document.getElementById('results-album-cover');
+      if (albumCoverUrl) { resCover.src = albumCoverUrl; resCover.style.display = 'block'; }
+      else { resCover.style.display = 'none'; }
+
+      const finalStars = calculateStarRating();
+      document.getElementById('results-stars').textContent = '★'.repeat(finalStars) + '☆'.repeat(5 - finalStars);
+
+      document.getElementById('results-header').textContent = failed ? "STAGE FAILED!" : "STAGE COMPLETE!";
+      document.getElementById('results-header').style.color = failed ? "#ef4444" : "#facc15";
+      document.getElementById('final-score').textContent = score.toLocaleString();
+      document.getElementById('max-combo').textContent = maxCombo;
+      document.getElementById('count-perfect').textContent = perfects;
+      document.getElementById('count-good').textContent = goods;
+      document.getElementById('count-miss').textContent = misses;
+
+      switchScreen(resultsScreen);
+    }
+
+    retryBtn.addEventListener('click', () => switchScreen(setupScreen));
+  </script>
+</body>
+</html>
